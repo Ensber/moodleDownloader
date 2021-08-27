@@ -4,6 +4,7 @@ import urllib.parse
 import threading
 import requests
 import random
+import shutil
 import queue
 import json
 import math
@@ -41,6 +42,22 @@ for i in range(len(sys.argv)):
             print("cannot decode argument 2 for command '" + cmd + "'")
     if cmd == "-readHex": 
         readHex = True
+    if cmd == "-set":
+        if arg2 == "true":
+            arg2 = True
+        if arg2 == "false":
+            arg2 = False
+        credentials[arg1] = arg2
+
+logF = open(credentials["logFolder"] + desinfectString(credentials["username"]) + ".log", "w")
+_print = print
+def print(line):
+    global _print
+    global logF
+    _print(line)
+    logF.write(line + "\n")
+    logF.flush()
+
 # testfile
 counter = 0
 def tfile(text, ending="html"):
@@ -118,7 +135,17 @@ def unzip(fromFile, toFolder, delete=True):
         os.system('unzip "' + fromFile + '" -d "' + toFolder + '"') # unzip
     if delete:
         os.remove(fromFile)
-    
+
+def zip(username, deleteFolder=True):
+    cd = os.curdir
+    os.chdir(cd + "/output")
+    if os.name == "nt": # windows config
+        os.system('7z a "' + username + '.zip" "' + username + '" -y > nul') # 7z
+    if os.name == "posix": # rpi config
+        os.system('zip "' + username + '.zip" "' + username + '"') # unzip
+    if deleteFolder:
+        shutil.rmtree(username)
+    os.chdir(cd)
 
 # queue for requests
 q = queue.Queue()
@@ -137,7 +164,7 @@ while cPos != -1:
             "handler": "section",
             "data": sec
         })
-        print("->", sec["name"], sec["url"])
+        print("-> " + sec["name"] + " " + sec["url"])
 
 # paralell tasks
 
@@ -170,7 +197,7 @@ def tHandler_section(section):
 
 # 'Aufgabe' (ger: task) is the term used to identify the type of element
 def tHandler_sectionEntry_Aufgabe(data):
-    print("[aufgabe    ]", data["path"])
+    print("[aufgabe    ] " + data["path"])
 
     data["path"] += idToStr(data["count"]) + " (A) " + desinfectString(data["name"])
     mkdir(data["path"])
@@ -224,35 +251,35 @@ def tHandler_sectionEntry_Aufgabe(data):
 
 # 'Verzeichnis' (ger: folder) is the term used to identify the type of element
 def tHandler_sectionEntry_Verzeichnis(data):
-    data["path"] += idToStr(data["count"]) + " " + desinfectString(data["name"])
-    print("[verzeichnis]",data["path"])
-    mkdir(data["path"])
+    path = data["path"] + idToStr(data["count"]) + " " + desinfectString(data["name"])
+    print("[verzeichnis] " + path)
+    mkdir(path)
 
     reqCntPP()
     req = s.get(data["url"])
     ok, folderDetail = getFolderDetail(req.text)
     if not ok:
-        print("cannot download " + data["path"] + "(failed to extract the download details)")
+        print("cannot download " + path + "(failed to extract the download details)")
         return -10
     
     reqCntPP()
     req = s.post(credentials["moodleUrl"] + credentials["moodleDownloadFolderUrl"], data=folderDetail)
 
-    fullFileName = data["path"] + "/temp.zip"
+    fullFileName = path + "/temp.zip"
     f = open("output/" + desinfectString(credentials["username"]) + "/" + fullFileName,"wb")
     f.write(req.content)
     f.close()
 
     unzip(
         "output/" + desinfectString(credentials["username"]) + "/" + fullFileName,
-        "output/" + desinfectString(credentials["username"]) + "/" + data["path"]
+        "output/" + desinfectString(credentials["username"]) + "/" + path
     )
     print("[verzeichnis] " + fullFileName + " finished downloading")
     
 
 # 'Datei' (ger: file) is the term used to identify the type of element
 def tHandler_sectionEntry_Datei(data):
-    print("[datei      ]",data["path"])
+    print("[datei      ] " + data["path"])
 
     reqCntPP()
     # download the file
@@ -276,7 +303,7 @@ def tHandler_sectionEntry_Datei(data):
 def tHandler_sectionEntry_Test(data):
     data["path"] += str(data["count"]) + " (T) " + desinfectString(data["name"])
     mkdir(data["path"])
-    print("[test       ] (Test downloads are unsupported)",data["path"])
+    print("[test       ] (Test downloads are unsupported) " + data["path"])
 
 # map tasks to names
 tHandler = {
@@ -299,6 +326,8 @@ def thread():
             returnCode = tHandler[task["handler"]](task["data"])
             if returnCode == -10:
                 q.put(task)
+                time.sleep(0.5)
+                print("[thread     ] requeuing for handler: " + task["handler"])
         q.task_done()
 
 # activate all threads (number defined in credentials by maxConnections)
@@ -313,5 +342,9 @@ for i in range(credentials["maxConnections"]):
 while q.qsize() > 0 or q.unfinished_tasks > 0:
     time.sleep(1)
 
+print("zipping results")
+zip(desinfectString(credentials["username"]), deleteFolder=True)
+
 dt = (math.floor(time.time() - startTime)*100)/100
 print(f"\n Requested {nRequests} pages in {dt}s")
+logF.close()
