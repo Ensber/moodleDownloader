@@ -8,6 +8,7 @@ import queue
 import json
 import math
 import time
+import sys
 import os
 
 startTime = time.time()
@@ -19,6 +20,27 @@ file = open("credentials.json", "r")
 credentials = json.load(file)
 file.close()
 
+readHex = False # read the cmd args in as hex
+# parse cli arguments
+for i in range(len(sys.argv)):
+    cmd = sys.argv[i]
+    arg1 = ""
+    arg2 = ""
+    if i + 1 < len(sys.argv):
+        arg1 = sys.argv[i+1]
+    if i + 2 < len(sys.argv):
+        arg2 = sys.argv[i+2]
+    if readHex:
+        try:
+            arg1 = bytearray.fromhex(arg1).decode("utf-8")
+        except:
+            print("cannot decode argument 1 for command '" + cmd + "'")
+        try:
+            arg2 = bytearray.fromhex(arg1).decode("utf-8")
+        except:
+            print("cannot decode argument 2 for command '" + cmd + "'")
+    if cmd == "-readHex": 
+        readHex = True
 # testfile
 counter = 0
 def tfile(text, ending="html"):
@@ -51,6 +73,10 @@ else:
 # get sections
 print("requesting sections")
 req = s.get(credentials["moodleUrl"] + credentials["moodleDownloadCourseUrl"])
+
+if req.url.find("login/index.php") != -1:
+    print("The provided credentials did not work. Please try again")
+
 nRequests += 1
 
 # TODO: add a check for a vaid response
@@ -73,6 +99,8 @@ def mkdir(path):
         pass
 
 def idToStr(i):
+    if type(i) == str:
+        return i
     o = str(i)
     if len(o)<2:
         o = "0" + o
@@ -144,7 +172,7 @@ def tHandler_section(section):
 def tHandler_sectionEntry_Aufgabe(data):
     print("[aufgabe    ]", data["path"])
 
-    data["path"] += str(data["count"]) + " (A) " + desinfectString(data["name"])
+    data["path"] += idToStr(data["count"]) + " (A) " + desinfectString(data["name"])
     mkdir(data["path"])
 
     reqCntPP()
@@ -196,7 +224,7 @@ def tHandler_sectionEntry_Aufgabe(data):
 
 # 'Verzeichnis' (ger: folder) is the term used to identify the type of element
 def tHandler_sectionEntry_Verzeichnis(data):
-    data["path"] += str(data["count"]) + " " + desinfectString(data["name"])
+    data["path"] += idToStr(data["count"]) + " " + desinfectString(data["name"])
     print("[verzeichnis]",data["path"])
     mkdir(data["path"])
 
@@ -238,7 +266,7 @@ def tHandler_sectionEntry_Datei(data):
         cPos = nextSlash + 1
     fName = desinfectString(querry[cPos:])
 
-    fullFileName = data["path"] + str(data["count"]) + " " + fName
+    fullFileName = data["path"] + idToStr(data["count"]) + " " + fName
     f = open("output/" + desinfectString(credentials["username"]) + "/" + fullFileName,"wb")
     f.write(req.content)
     f.close()
