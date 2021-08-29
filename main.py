@@ -31,32 +31,40 @@ for i in range(len(sys.argv)):
         arg1 = sys.argv[i+1]
     if i + 2 < len(sys.argv):
         arg2 = sys.argv[i+2]
-    if readHex:
-        try:
-            arg1 = bytearray.fromhex(arg1).decode("utf-8")
-        except:
-            print("cannot decode argument 1 for command '" + cmd + "'")
-        try:
-            arg2 = bytearray.fromhex(arg1).decode("utf-8")
-        except:
-            print("cannot decode argument 2 for command '" + cmd + "'")
     if cmd == "-readHex": 
         readHex = True
     if cmd == "-set":
+        if readHex:
+            try:
+                arg1 = bytearray.fromhex(arg1).decode("utf-8")
+            except:
+                print("cannot decode argument 1 for command '" + cmd + "' (" + str(arg1) + ")")
+            try:
+                arg2 = bytearray.fromhex(arg2).decode("utf-8")
+            except:
+                print("cannot decode argument 2 for command '" + cmd + "' (" + str(arg2) + ")")
         if arg2 == "true":
             arg2 = True
         if arg2 == "false":
             arg2 = False
         credentials[arg1] = arg2
 
-logF = open(credentials["logFolder"] + desinfectString(credentials["username"]) + ".log", "w")
+# create the log folder, if it doesn't exist
+try:
+    os.mkdir(credentials["logFolder"])
+except FileExistsError:
+    pass
+
+if credentials["logs"]:
+    logF = open(credentials["logFolder"] + desinfectString(credentials["username"]) + ".log", "w")
 _print = print
 def print(line):
     global _print
-    global logF
     _print(line)
-    logF.write(line + "\n")
-    logF.flush()
+    if credentials["logs"]:
+        global logF
+        logF.write(line + "\n")
+        logF.flush()
 
 # testfile
 counter = 0
@@ -100,7 +108,7 @@ nRequests += 1
 
 # create nesecarry folders
 try:
-    os.mkdir("output")
+    os.mkdir("output/")
 except FileExistsError:
     pass
 try:
@@ -346,5 +354,6 @@ print("zipping results")
 zip(desinfectString(credentials["username"]), deleteFolder=True)
 
 dt = (math.floor(time.time() - startTime)*100)/100
-print(f"\n Requested {nRequests} pages in {dt}s")
-logF.close()
+print("\n Requested " + str(nRequests) + " pages in " + str(dt) + "s")
+if credentials["logs"]:
+    logF.close()
