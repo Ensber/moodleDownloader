@@ -140,7 +140,7 @@ def unzip(fromFile, toFolder, delete=True):
     if os.name == "nt": # windows config
         os.system('7z x "' + fromFile + '" -o"' + toFolder + '" -y > nul') # 7z
     if os.name == "posix": # rpi config
-        os.system('unzip "' + fromFile + '" -d "' + toFolder + '"') # unzip
+        os.system('unzip -q "' + fromFile + '" -d "' + toFolder + '"') # unzip
     if delete:
         os.remove(fromFile)
 
@@ -150,7 +150,7 @@ def zip(username, deleteFolder=True):
     if os.name == "nt": # windows config
         os.system('7z a "' + username + '.zip" "' + username + '" -y > nul') # 7z
     if os.name == "posix": # rpi config
-        os.system('zip "' + username + '.zip" "' + username + '"') # unzip
+        os.system('zip -q "' + username + '.zip" "' + username + '"') # unzip
     if deleteFolder:
         shutil.rmtree(username)
     os.chdir(cd)
