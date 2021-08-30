@@ -332,7 +332,11 @@ def thread():
         if not task["handler"] in tHandler:
             print("Handler '" + task["handler"] + "' is not supported!")
         else:
-            returnCode = tHandler[task["handler"]](task["data"])
+            returnCode = 0
+            try:
+                returnCode = tHandler[task["handler"]](task["data"])
+            except requests.exceptions.ConnectionError:
+                returnCode = -10
             if returnCode == -10:
                 q.put(task)
                 time.sleep(0.5)
