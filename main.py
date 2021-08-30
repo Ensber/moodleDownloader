@@ -61,6 +61,7 @@ _print = print
 def print(line):
     global _print
     _print(line)
+    sys.stdout.flush()
     if credentials["logs"]:
         global logF
         logF.write(line + "\n")
@@ -150,7 +151,7 @@ def zip(username, deleteFolder=True):
     if os.name == "nt": # windows config
         os.system('7z a "' + username + '.zip" "' + username + '" -y > nul') # 7z
     if os.name == "posix": # rpi config
-        os.system('zip -q "' + username + '.zip" "' + username + '"') # unzip
+        os.system('zip -r "' + username + '.zip" "' + username + '"') # unzip
     if deleteFolder:
         shutil.rmtree(username)
     os.chdir(cd)
