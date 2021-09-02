@@ -11,6 +11,7 @@ import math
 import time
 import sys
 import os
+import re
 
 startTime = time.time()
 
@@ -96,9 +97,16 @@ else:
     s.cookies["MOODLEID1_"] = credentials["cookie_MOODLEID1_"]
     s.cookies["MoodleSession"] = credentials["cookie_MoodleSession"]
 
+# get section tab url
+print("finding the sections tab")
+req = s.get(credentials["moodleUrl"])
+cPos, html = getElement(req.text, '<div id="inst995')
+grade = re.findall('href="([^>]*)">([A-Z]{2,3}[0-9]{1,2}[A-Z]?)</a>', html)[0]
+print("Detected Grade " + grade[1])
+
 # get sections
 print("requesting sections")
-req = s.get(credentials["moodleUrl"] + credentials["moodleDownloadCourseUrl"])
+req = s.get(grade[0])
 
 if req.url.find("login/index.php") != -1:
     print("The provided credentials did not work. Please try again")
