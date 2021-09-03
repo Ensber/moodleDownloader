@@ -337,6 +337,8 @@ def thread():
     while q.qsize() > 0:
         time.sleep(random.random())
         task = q.get()
+        if not "requeued" in task:
+            task["requeued"] = 0
         if not task["handler"] in tHandler:
             print("Handler '" + task["handler"] + "' is not supported!")
         else:
@@ -345,7 +347,8 @@ def thread():
                 returnCode = tHandler[task["handler"]](task["data"])
             except requests.exceptions.ConnectionError:
                 returnCode = -10
-            if returnCode == -10:
+            if returnCode == -10 and task["requeued"] < 5:
+                task["requeued"] += 1
                 q.put(task)
                 time.sleep(0.5)
                 print("[thread     ] requeuing for handler: " + task["handler"])
